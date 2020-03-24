@@ -33,18 +33,19 @@ def getDataSet():
 #Load Dataset
 #Returns test and train Dataframes
 def loadDataSet():
-    train = pd.read_csv( os.path.join(DATASET_PATH, "train.csv"))
-    test =  pd.read_csv( os.path.join(DATASET_PATH, "test.csv"))
+    train = pd.read_csv( os.path.join(DATASET_PATH, "train.csv"), index_col="Id")
+    test =  pd.read_csv( os.path.join(DATASET_PATH, "test.csv"), index_col="Id")
 
     return train, test
 
 #Write Kaggle Prediction File
 #output ID and SalesPrice
-def writeKagglePrediction(predict):
+def writeKagglePrediction(testSet, predict):
     None
 
-def findBlankValueColumns(dataset):
+def findBlankValueColumns(raw_dataset):
     # Check which columns have blank values
+    dataset = pd.DataFrame(raw_dataset)
     for col in list(dataset):
         missing = dataset[col].isna().sum()
         if missing > 1:
@@ -56,9 +57,145 @@ def displayScores(score):
     print("Mean: ", np.mean(score))
     print("STD: ", np.std(score))
 
+
 from sklearn.base import BaseEstimator, TransformerMixin
-class dataPreprocess(BaseEstimator, TransformerMixin):
-    None
+
+class dataSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, attribute_names):
+        self.attribute_names = attribute_names
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X[self.attribute_names].values
+
+class OneHotEncoderDF(BaseEstimator, TransformerMixin):
+    def __init__(self, columnnames):
+        self.cat_cols = columnnames
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        train_cat = pd.DataFrame()
+        for colnum in range(len(self.cat_cols)-1):
+            print("Column: ", col)
+            train_col = X[colnum].copy()
+
+            # separate category into columns
+            onehot_enc = OneHotEncoder(categories='auto')
+            onehot_res = onehot_enc.fit_transform(train_col.reshape(-1,1))
+            # print("OneHotEncoder shape: ", onehot_res.shape)
+
+            # prefix column names with original  column
+            print("Categories (", len(ord_enc.categories_[0]), "): " , ord_enc.categories_[0])
+            col_names = [self.cat_cols[colnum] + "-" + str(category) for category in ord_enc.categories_[0]]
+            print("Created column names:", col_names)
+
+            # put results back into dataframe with column names
+            onehot_res_df = pd.DataFrame(data=onehot_res.toarray(), columns=col_names)
+
+            # add results into train_cat to save results
+            train_cat = pd.concat([train_cat, onehot_res_df], axis=1)
+
+
+        #print("X", X.shape)
+        #print(self.IndexColumns)
+        #print(pd.DataFrame(data=X, columns=self.IndexColumns))
+
+        print(type(df))
+        print(df)
+        return df
+
+
+
+
+
+
+train_raw, test_raw = loadDataSet()
+
+
+
+#Pipeline
+train_set = train_raw.copy()
+
+
+#  Select Columns for Cat / Num
+train_set_Y = train_set["SalePrice"].copy()
+train_set = train_set.drop("SalePrice", axis=1)
+
+train_num_col = train_set.columns[train_set.dtypes != "object"]
+train_str_col = train_set.columns[train_set.dtypes == "object"]
+
+#columns that are integers but should be treated as categories/strings
+train_numstr_col = pd.Index(["MSSubClass", "OverallQual", "OverallCond"])
+
+for col in train_numstr_col:
+    train_set[col] = train_set[col].astype('str')
+
+train_num_col = train_num_col.drop(train_numstr_col)
+train_str_col = train_str_col.append(train_numstr_col)
+
+#ToDo: integer columns taht can be converted to categories (decades) <-- is this useful?
+# ["YearBuilt", "YearRemodAdd"])
+
+
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.impute import SimpleImputer
+
+
+num_pipeline = Pipeline([
+    ("dataSelect", dataSelector(train_num_col)),
+    ("impute", SimpleImputer(strategy="median")),
+    ("featureScale", StandardScaler()),
+    ])
+
+
+cat_pipeline = Pipeline([
+    ("dataSelect", dataSelector(train_str_col)),
+    ("impute", SimpleImputer(strategy="constant", fill_value="None")),
+    ("ordencode", OrdinalEncoder(categories='auto')),
+    ("onehotpd", OneHotEncoderDF(train_str_col))
+    #("onehot", OneHotEncoder(categories='auto', sparse=False))
+    #("categorize", catToColumns())
+    ])
+
+
+full_pipeline = FeatureUnion([
+    ("num", num_pipeline),
+    ("cat", cat_pipeline),
+])
+
+results = full_pipeline.fit_transform(train_set)
+
+
+num_col_names = train_num_col #33 col
+
+#train_str_col
+
+#add column names 277 col
+cat_col_names = pd.Index([train_str_col[col] + "-" + str(category)
+    for col in range(len(train_str_col)-1)
+    for category in cat_pipeline.named_steps["ordencode"].categories_[col]])
+
+pd.DataFrame(data=results, columns=train_num_col.append(pd.Index(cat_col_names)))
+
+
+#Preprocess
+
+
+
+#  Impute on blanks
+
+#Feature engineer
+#  Category Encoder
+
+#Feature Scaling
+
+#Cat/Num
 
 
 
@@ -67,7 +204,7 @@ class dataPreprocess(BaseEstimator, TransformerMixin):
 Analysis
 '''
 
-train_raw, test_raw = loadDataSet()
+
 
 '''
 There are many string objects in this dataset. let's separate strings and run corr on these
@@ -347,10 +484,37 @@ from sklearn.model_selection import cross_val_score
 
 from sklearn.model_selection import GridSearchCV
 
-param = [ {"learning_rate": [.05,.1,.5],
-           "n_estimators": [200,300,400],
-           "max_depth": [2,3,4]},
+param = [ {"learning_rate": [.03,.05,.07],
+           "n_estimators": [150,200,250, 300, 400],
+           "max_depth": [3]},
         ]
 grid = GridSearchCV(GradientBoostingRegressor(verbose=2, random_state=42), n_jobs=-1, param_grid=param, cv=5)
 
 grid.fit(X=train_select, y=train_set_Y)
+
+'''
+grid.best_estimator_
+Out[4]: 
+GradientBoostingRegressor(alpha=0.9, criterion='friedman_mse', init=None,
+             learning_rate=0.05, loss='ls', max_depth=3, max_features=None,
+             max_leaf_nodes=None, min_impurity_decrease=0.0,
+             min_impurity_split=None, min_samples_leaf=1,
+             min_samples_split=2, min_weight_fraction_leaf=0.0,
+             n_estimators=400, n_iter_no_change=None, presort='auto',
+             random_state=42, subsample=1.0, tol=0.0001,
+             validation_fraction=0.1, verbose=2, warm_start=False)
+'''
+
+#how does this model fit?
+#Todo: Take a train/test. Fit on train, and predict on test. compare numbers
+
+from sklearn.model_selection import train_test_split
+valTrainX, valTestX, valTrainY, valTestY = train_test_split(train_select,train_set_Y, train_size=.7, random_state=42)
+
+gradboost = grid.best_estimator_
+
+gradboost.fit(valTrainX, valTrainY)
+predict = gradboost.predict(valTestX)
+
+
+
