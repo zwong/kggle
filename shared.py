@@ -1,5 +1,6 @@
 import os
 import zipfile as zip
+import time
 import pandas as pd
 
 
@@ -27,14 +28,15 @@ def getDataSet(KAGGLE_COMPETITION, PROJECT_NAME):
     os.system(KAGGLE_COMMAND)
 
     print("Unpack dataset...")
-    #os.system("unzip " + DOWNLOAD_PATH + "/*.zip" + " -d " + DATASET_PATH)
-    unzip = zip.ZipFile(DOWNLOAD_PATH + "\\" + KAGGLE_COMPETITION + ".zip")
-
-    unzip.extractall(path=DATASET_PATH)
-    unzip.close()
-    # print("Delete zip file...")
+    os.system("unzip " + DOWNLOAD_PATH + "/*.zip" + " -d " + DATASET_PATH)
+    #unzip = zip.ZipFile(DOWNLOAD_PATH + "\\" + KAGGLE_COMPETITION + ".zip")
+    #unzip.extractall(path=DATASET_PATH)
+    #unzip.close()
+    print("Delete zip file...")
     # os.system("del /Q " + DOWNLOAD_PATH + "\\*")
-    #For Mac os.system("rm " + DOWNLOAD_PATH + "/*")
+
+    #For Mac
+    os.system("rm " + DOWNLOAD_PATH + "/*")
 
 
 #Load Dataset
@@ -43,7 +45,7 @@ def loadDataSet(PROJECT_NAME, indexName="Id"):
     BASE_PATH, PROJECT_PATH, DATASET_PATH, DOWNLOAD_PATH = setConfig(PROJECT_NAME)
 
     if (not os.path.exists(DATASET_PATH)):
-        getDataSet()
+        getDataSet(KAGGLE_COMPETITION,   PROJECT_NAME)
 
     train = pd.read_csv( os.path.join(DATASET_PATH, "train.csv"), index_col=indexName)
     test =  pd.read_csv( os.path.join(DATASET_PATH, "test.csv"), index_col=indexName)
@@ -52,8 +54,15 @@ def loadDataSet(PROJECT_NAME, indexName="Id"):
 
 #Write Kaggle Prediction File
 #output ID and SalesPrice
-def writeKagglePrediction(testSet, predict):
-    None
+def writeKagglePrediction(PROJECT_NAME, prefix, predict):
+    BASE_PATH, PROJECT_PATH, DATASET_PATH, DOWNLOAD_PATH = setConfig(PROJECT_NAME)
+
+    PREDICT_PATH = PROJECT_PATH + "/predict"
+    if (not os.path.exists(PREDICT_PATH)):
+        os.mkdir(PREDICT_PATH)
+
+    pd.DataFrame(predict).to_csv(PREDICT_PATH+"/"+prefix+"-"+time.strftime("%Y%m%d%H%M%S", time.localtime())+".csv", index=False)
+
 
 
 def findBlankColumns(dataset):
@@ -65,3 +74,4 @@ def findBlankColumns(dataset):
         if missing > 1:
             print(col, ": ", dataset[col].isna().sum()," blank values found (", "%.4f pct" % (missing/len(dataset[col])*100),
                   ")")
+
