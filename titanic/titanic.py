@@ -115,17 +115,19 @@ def transformDataset(train_set):
     ADULT_AGE = 12
 
     #Marital Status (Married/Not Married/Unknown)
-    train_set["MaritalStatus"] = np.nan
-    train_set.loc[train_set["Age"] < ADULT_AGE, "MaritalStatus"] = "Not Married"
+    train_set["PersonType"] = np.nan
+    train_set["MaritalStatus"] = "Not Married"
+    # train_set.loc[train_set["Age"] < ADULT_AGE, "MaritalStatus"] = "Not Married"
     train_set.loc[train_set["Salutation"] == "Mrs", "MaritalStatus"] = "Married"
-    train_set.loc[train_set["Salutation"] == "Miss", "MaritalStatus"] = "Not Married"
-    train_set.loc[train_set["Salutation"] == "Master", "MaritalStatus"] = "Not Married"
+    # train_set.loc[train_set["Salutation"] == "Miss", "MaritalStatus"] = "Not Married"
+    # train_set.loc[train_set["Salutation"] == "Master", "MaritalStatus"] = "Not Married"
     train_set.loc[(train_set["Sex"] == "male") & (train_set["Age"] > ADULT_AGE) & (train_set["SibSp"] == 1), "MaritalStatus"] = "Married"
-    train_set.loc[(train_set["Sex"] == "male") & (train_set["Age"] > ADULT_AGE) & (train_set["SibSp"] == 0), "MaritalStatus"] = "Not Married"
-    train_set.loc[(train_set["Sex"] == "female") & (train_set["Age"] > ADULT_AGE) & (train_set["Parch"] > 0), "MaritalStatus"] = "Not Married"
-    train_set.loc[(train_set["Parch"] > 2), "MaritalStatus"] = "Not Married"
-    train_set.loc[(train_set["SibSp"] > 1), "MaritalStatus"] = "Not Married"
-    train_set.loc[(train_set["SibSp"] == 0) & (train_set["Parch"] == 0), "MaritalStatus"] = "Not Married"
+    #train_set.loc[(train_set["Sex"] == "male") & (train_set["Age"] > ADULT_AGE) & (train_set["SibSp"] == 0), "MaritalStatus"] = "Not Married"
+    # train_set.loc[(train_set["Sex"] == "female") & (train_set["Age"] > ADULT_AGE) & (train_set["Parch"] > 0), "MaritalStatus"] = "Not Married"
+    # train_set.loc[(train_set["Parch"] > 2), "MaritalStatus"] = "Not Married"
+    # train_set.loc[(train_set["SibSp"] > 1), "MaritalStatus"] = "Not Married"
+    # train_set.loc[(train_set["SibSp"] <= 1) & (train_set["Parch"] == 0), "MaritalStatus"] = "Not Married"
+    # train_set.loc[(train_set["SibSp"] <= 1) & (train_set["Parch"] == 0), "MaritalStatus"] = "Not Married"
 
 
 
@@ -133,25 +135,35 @@ def transformDataset(train_set):
 
 
     #Person Type
-    train_set["PersonType"] = np.nan
-    train_set.loc[ train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
-    train_set.loc[train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
-    train_set.loc[(train_set["Salutation"] == "Master"), "PersonType"] = "Child"
-    train_set.loc[(train_set["SibSp"] > 1 ) & (train_set["Parch"] <= 2), "PersonType"] = "Child"
-    train_set.loc[(train_set["MaritalStatus"] == "Married"), "PersonType"] = "Adult"
+    train_set["PersonType"] = "Adult"
 
+    # train_set.loc[ train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
+    # train_set.loc[train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
+    train_set.loc[(train_set["Salutation"] == "Master"), "PersonType"] = "Child"
+    train_set.loc[(train_set["SibSp"] >= 1) & (train_set["Parch"] <= 2), "PersonType"] = "Child"
+    train_set.loc[(train_set["SibSp"] == 0) & (train_set["Parch"] <= 2), "PersonType"] = "Child"
+    # train_set.loc[(train_set["MaritalStatus"] == "Married"), "PersonType"] = "Adult"
     train_set.loc[(train_set["Age"] < ADULT_AGE), "PersonType"] = "Child"
-    train_set.loc[(train_set["Age"] >= ADULT_AGE), "PersonType"] = "Adult"
+    # train_set.loc[(train_set["Age"] >= ADULT_AGE), "PersonType"] = "Adult"
+    # train_set.loc[(train_set["SibSp"] == 0) & (train_set["Parch"] == 0), "PersonType"] = "Adult"
+
 
 
 
     #train_set.loc[(train_set["Age"] > ADULT_AGE) & (train_set["Parch"] > 0), "MaritalStatus"] = "Married"
-
     train_set["GroupSize"] = train_set["Parch"] + train_set["SibSp"]
 
     train_set.loc[ train_set["GroupSize"] >= 6, "GroupType"] = "LargeGroup"
     train_set.loc[ train_set["GroupSize"] < 6, "GroupType"] = "SmallGroup"
     train_set.loc[ train_set["GroupSize"] == 0, "GroupType"] = "Solo"
+
+    #Age
+    #Todo: For missing Ages, average for Adult or Child
+    median_childage = train_set[train_set["PersonType"] == "Child"]["Age"].median()
+    median_adultage = train_set[train_set["PersonType"] == "Adult"]["Age"].median()
+
+    train_set.loc[ (train_set["PersonType"] == "Adult") & (train_set["Age"].isnull()), "Age"] = median_adultage + 0.1
+    train_set.loc[ (train_set["PersonType"] == "Child") & (train_set["Age"].isnull()), "Age"] = median_childage + 0.1
 
 
     # Columns to add
@@ -168,8 +180,6 @@ def transformDataset(train_set):
     #     train_set.drop(labels=["Survived"], axis=1, inplace=True)
 
 
-
-
     return train_set
 
 ##################
@@ -180,6 +190,15 @@ def transformDataset(train_set):
 #Returns cleaned dataset
 
 def dataClean(train_set):
+    train_set.drop(labels=["Name", "Age", "FirstName", "LastName", "Ticket", "Cabin", "GroupSize"], axis=1,
+           inplace=True)
+    print("DataClean: Columns: ", train_set.columns)
+    if "Survived" in train_set.columns:
+        print("Survived feature found. Dropping")
+        train_set.drop("Survived", axis=1, inplace=True)
+    else:
+        print("Survived feature does not exist")
+
     #drop columns that won't be used for training - Name/FirstName/LastName
     train_transform = train_set.copy(deep=True)
 
@@ -211,9 +230,9 @@ def dataClean(train_set):
         #print("OneHotEncoder shape: ", onehot_res.shape)
 
         #prefix column names with original  column
-        #print("Categories (", len(ord_enc.categories_[0]), "): " , ord_enc.categories_[0])
+        print("Categories (", len(ord_enc.categories_[0]), "): " , ord_enc.categories_[0])
         col_names = [col + "-" + str(category) for category in ord_enc.categories_[0]]
-        #print("Created column names:", col_names)
+       #print("Created column names:", col_names)
 
         #put results back into dataframe with column names
         onehot_res_df = pd.DataFrame(data=onehot_res.toarray(), columns=col_names)
@@ -247,17 +266,12 @@ def getScore(results):
 
 
 print("Cleaning train dataset...")
-x = transformDataset(train_set)
+trainTransform = transformDataset(train_set)
+train_Y = trainTransform["Survived"]
 
-x.drop(labels=["Name", "Age", "FirstName", "LastName", "Ticket", "Cabin", "SibSp","Parch","GroupSize"], axis=1, inplace=True)
-if "Survived" in train_set.columns:
-    train_Y = train_set["Survived"]
-    train_set.drop("Survived", axis=1, inplace=True)
-else:
-    print("Survived feature does not exist")
+#Todo: Identify most effective identifiers in the dataClean() method
 
-
-train_processed  = dataClean(x)
+train_processed  = dataClean(trainTransform)
 print("Cleaning train dataset complete")
 
 #Train Test Split
@@ -278,44 +292,44 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 print("Logistic Regression")
 logreg = LogisticRegression(solver="lbfgs")
-logreg.fit(X=train_split, y=trainY_split)
-pred = logreg.predict(test_split)
-print("Accuracy: ", accuracy_score(testY_split, pred))
-crossval = cross_val_score(logreg, train_processed, train_Y, scoring="accuracy", cv=10)
+# logreg.fit(X=train_split, y=trainY_split)
+# pred = logreg.predict(test_split)
+# print("Accuracy: ", accuracy_score(testY_split, pred))
+crossval = cross_val_score(logreg, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
 print("SVM")
 svc = SVC(gamma="auto")
-svc.fit(X=train_split, y=trainY_split)
-pred = svc.predict(train_processed)
-print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(svc, test_split, testY_split, scoring="f1", cv=10)
+# svc.fit(X=train_split, y=trainY_split)
+# pred = svc.predict(train_processed)
+# print("Accuracy: ", accuracy_score(train_Y, pred))
+crossval = cross_val_score(svc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
 print("Decision Tree")
 dtc = DecisionTreeClassifier()
-dtc.fit(X=train_split, y=trainY_split)
-pred = dtc.predict(train_processed)
-print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(dtc, test_split, testY_split, scoring="f1", cv=10)
+# dtc.fit(X=train_split, y=trainY_split)
+# pred = dtc.predict(train_processed)
+# print("Accuracy: ", accuracy_score(train_Y, pred))
+crossval = cross_val_score(dtc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
 
 print("Extra Tree Classifier")
 etc = ExtraTreeClassifier()
-etc.fit(X=train_split, y=trainY_split)
-pred = etc.predict(train_processed)
-print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(etc, test_split, testY_split, scoring="f1", cv=10)
+# etc.fit(X=train_split, y=trainY_split)
+# pred = etc.predict(train_processed)
+# print("Accuracy: ", accuracy_score(train_Y, pred))
+crossval = cross_val_score(etc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
 
 print("Grandient Boost")
 gbc = GradientBoostingClassifier()
-gbc.fit(X=train_split, y=trainY_split)
-pred = gbc.predict(train_processed)
-print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(gbc, test_split, testY_split, scoring="f1", cv=10)
+# gbc.fit(X=train_split, y=trainY_split)
+# pred = gbc.predict(train_processed)
+# print("Accuracy: ", accuracy_score(train_Y, pred))
+crossval = cross_val_score(gbc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
 
@@ -335,6 +349,9 @@ logres_grid.fit(X=train_split, y=trainY_split)
 # for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
 #     print(f1, params)
 logres_final = logres_grid.best_estimator_
+
+#train with full train set
+
 logres_predict = logres_final.predict(test_split)
 
 print("Accuracy:" , accuracy_score(testY_split, logres_predict))
@@ -369,16 +386,16 @@ print("Recall:", recall_score(testY_split, svm_predict))
 
 #transform test set
 
-x = transformDataset(test_raw)
-test_processed = dataClean(x)
+testTransform = transformDataset(test_raw)
+test_processed = dataClean(testTransform)
 
 test_predict = logres_final.predict(test_processed)
-
 predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
+writeKagglePrediction(PROJECT_NAME, "logres", predict_df)
 
-writeKagglePrediction(PROJECT_NAME, predict_df)
-
-
+test_predict = svm_final.predict(test_processed)
+predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
+writeKagglePrediction(PROJECT_NAME, "svm", predict_df)
 
 
 #tickets associaated with cabin
