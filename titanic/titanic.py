@@ -59,15 +59,26 @@ def transformDataset(train_set):
     impute = SimpleImputer(strategy="most_frequent")
     train_set["Embarked"] = impute.fit_transform(train_set["Embarked"].values.reshape(-1,1))
 
-
     #Name Salutation
     name = train_set["Name"].str.extract(pat="(.+),\s(.+?)\.(.*)")
     train_set["LastName"] = name[0]
     train_set["Salutation"] = name[1]
     train_set["FirstName"] = name[2]
 
+    #Mapping Salutations
+    train_set.loc[train_set["Salutation"] == "Mme", "Salutation"] = "Mrs"
+    train_set.loc[train_set["Salutation"] == "Mlle", "Salutation"] = "Miss"
+    train_set.loc[train_set["Salutation"] == "the Countess", "Salutation"] = "Miss"
+    train_set.loc[train_set["Salutation"] == "Lady", "Salutation"] = "Miss"
+    train_set.loc[train_set["Salutation"] == "Jonkheer", "Salutation"] = "Master"
+    train_set.loc[train_set["Salutation"] == "Major", "Salutation"] = "Mr"
+    train_set.loc[train_set["Salutation"] == "Col", "Salutation"] = "Mr"
+    train_set.loc[train_set["Salutation"] == "Sir", "Salutation"] = "Mr"
+    train_set.loc[train_set["Salutation"] == "Capt", "Salutation"] = "Mr"
+    train_set.loc[train_set["Salutation"] == "Don", "Salutation"] = "Mr"
+
     #Cutdown # of Salutations
-    train_set.loc[~train_set["Salutation"].isin(["Mr", "Miss", "Mrs", "Master", "Rev"]), "Salutation"] = "Other"
+    train_set.loc[~train_set["Salutation"].isin(["Mr", "Miss", "Mrs"]), "Salutation"] = "Other"
 
     #Last name doens't help. Could be same last name. More important is the Parch/SibSp numbers or Ticket is same
     #train_set[train_set["FirstName"].str.find(sub="(") > 0][["FirstName","LastName", "Salutation","Parch","SibSp","Age"]]
@@ -114,84 +125,75 @@ def transformDataset(train_set):
     #Logic
     ADULT_AGE = 12
 
-    #Marital Status (Married/Not Married/Unknown)
+    #Person Type
     train_set["PersonType"] = np.nan
-    # train_set["MaritalStatus"] = "Not Married"
-
-
-
-    #Age / Salutation
-    #SibSp > 1 - must be a traveling with siblings
-        #Parch == 0 - could be adult traveling with siblings / could be orphan traveling with siblings
-        #Parch == 1 - could be adult traveling with child / could be child traveling with atleast 2 siblings
-        #Parch == 2 - could be adult traveling with child / could be child traveling with atleast 2 siblings
-    #SibSp == 1 - could traveling with sibling or spouse
-        #Parch > 2 - must be adult traveling with kids
-        #Parch == 2 - could be traveling with spouse and 2 kids / could be person traveling with sibling and parents
-        #Parch == 1 - could be traveling with spouse and 1 kids / could be person traveling with sibling and 1 parent
-        #Parch == 0 - could be traveling with spouse only / Could be traveling with sibling
-    #SibSp == 0 - traveling with no sibling or spouse
-        #Parch == 0 - Solo Traveler / Orphan
-        #Parch == 1 - Single parent traveling with child / Single child traveling with single parent
-        #Parch == 2 - Single parent traveling with 2 children / Single child traveling with both parents
-        #Parch > 2 - Must be Single parent traveling with more than 2 kids
-
-    #
-    # #If you are an adult, have SibSp == 1 and Parch > 2, then fits profile of a married  with at least 2 kids
-    # train_set.loc[(train_set["Age"] > ADULT_AGE) & (train_set["SibSp"] == 1) &
-    #               (train_set["Parch"] > 2), "MaritalStatus"] = "Married"
-    #
-    # train_set.loc[(train_set["Age"] > ADULT_AGE) & (train_set["SibSp"] == 0) &
-    #               (train_set["Parch"] > 2), "MaritalStatus"] = "Married"
-    #
-    # #If we don't know your age, If you have 1 SibSp and more than 2 Parch, then this fits the profile of a Spouse + >=2 kids
-    # train_set.loc[(train_set["SibSp"] == 1) &
-    #               (train_set["Parch"] > 2), "MaritalStatus"] = "Married"
-    #
-    # # Salutation of Mrs == Married
-    # train_set.loc[train_set["Salutation"] == "Mrs", "MaritalStatus"] = "Married"
-    #
-    #
-    # #Person Type
     train_set["PersonType"] = "Adult"
-    #
-    # # train_set.loc[ train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
-    # # train_set.loc[train_set["Salutation"] == "Mrs", "PersonType"] = "Adult"
-    #
-    # #Master is a salutation for boys
-    # train_set.loc[(train_set["Salutation"] == "Master"), "PersonType"] = "Child"
-    #
-    # #If you aren't married and your SibSp is greater than 1, then you're traveling with siblings. Assume you are a child
-    # train_set.loc[(train_set["Age"] < ADULT_AGE) & (train_set["MaritalStatus"] == "Not Married") & (train_set["SibSp"] > 1), "PersonType"] = "Child"
-    #
-    # # If you aren't married and your are traveling with less than 2 Parent/Children, assuem you're a child traveling with parents
-    # train_set.loc[(train_set["Age"] < ADULT_AGE) & (train_set["MaritalStatus"] == "Not Married") & (train_set["Parch"] <= 2), "PersonType"] = "Child"
-    #
-    # # train_set.loc[(train_set["MaritalStatus"] == "Married"), "PersonType"] = "Adult"
     train_set.loc[(train_set["Age"] < ADULT_AGE), "PersonType"] = "Child"
-    # # train_set.loc[(train_set["Age"] >= ADULT_AGE), "PersonType"] = "Adult"
-    # # train_set.loc[(train_set["SibSp"] == 0) & (train_set["Parch"] == 0), "PersonType"] = "Adult"
-    #
-    #
+    train_set.loc[(train_set["Salutation"] == "Master") & (train_set["Age"] < ADULT_AGE), "PersonType"] = "Child"
 
 
-    #train_set.loc[(train_set["Age"] > ADULT_AGE) & (train_set["Parch"] > 0), "MaritalStatus"] = "Married"
+    #Group Size
     train_set["GroupSize"] = train_set["Parch"] + train_set["SibSp"] + 1
 
     #Selected 4 instead of 6 or 5 because of the higher correlation with Survivability
-    train_set.loc[ train_set["GroupSize"] >= 5, "GroupType"] = "4 or more"
-    train_set.loc[ train_set["GroupSize"] < 5, "GroupType"] = "Less than 4"
-    train_set.loc[ train_set["GroupSize"] == 1, "GroupType"] = "SingleTraveller"
+    train_set.loc[train_set["GroupSize"] == 1, "GroupType"] = "SingleTraveller"
+    train_set.loc[(train_set["GroupSize"] <= 4) &
+                  (train_set["GroupSize"] > 1), "GroupType"] = "2 - 4"
+    train_set.loc[(train_set["GroupSize"] > 4), "GroupType"] = "More than 5"
 
 
+    #Parch
+
+    train_set.loc[(train_set["Parch"] == 0), "ParchType"] = "NoParch"
+    train_set.loc[((train_set["Parch"] == 1) | (train_set["Parch"] == 2)), "ParchType"] = "1-2Parch"
+    train_set.loc[(train_set["Parch"] > 2), "ParchType"] = "Over2Parch"
+
+    # train_set["ParchType"] = train_set["Sex"] + train_set["PersonType"] + train_set["ParchType"]
+
+    #SibSp
+    train_set.loc[(train_set["SibSp"] == 0), "SibSpType"] = "NoSiblingSpouse"
+    train_set.loc[(train_set["SibSp"] == 1), "SibSpType"] = "OneSiblingSpouse"
+    train_set.loc[(train_set["SibSp"] > 1) & (train_set["Parch"] <= 4),
+             "SibSpType"] = "2-4SiblingSpouse"
+    train_set.loc[(train_set["SibSp"] > 4), "SibSpType"] = "Over4SiblingSpouse"
+
+    # train_set["SibSpType"] = train_set["Sex"] + train_set["PersonType"] + train_set["SibSpType"]
 
     #Fare
     #Fare is for the total cost for more than one person. Let's average this out
     train_set["AverageFare"] = train_set["Fare"]/train_set["GroupSize"]
 
+    #check if there are 0 fare tickets. this shouldn't be the case and we should predict the value based off groupsize/persontype/embarked/class/groupsize
+    fare_lookup = train_set.groupby(["PersonType","Sex","Embarked","Pclass"])["AverageFare"].mean()
+
+    defaultfare_lookup = train_set.groupby(["Embarked","Pclass"])["AverageFare"].median()
+
+    # zerofare = train_set[train_set["AverageFare"] == 0]
+    #
+    # for idx in zerofare.index:
+    #     record = train_set.loc[idx]
+    #     persontype_val = record["PersonType"]
+    #     sex_val = record["Sex"]
+    #     embarked_val = record["Embarked"]
+    #     pclass_val = record["Pclass"]
+    #
+    #     if (persontype_val, sex_val, embarked_val, pclass_val) in fare_lookup.index:
+    #         #print("Fare Exists")
+    #         train_set.loc[idx, "AverageFare"] = fare_lookup[persontype_val, sex_val, embarked_val, pclass_val]
+    #     else:
+    #         print("Fare does not exist")
+    #         #create based
+    #         train_set.loc[idx,"AverageFare"] = defaultfare_lookup[embarked_val, pclass_val]
+    #
+
+
     #Age
-    median_age = train_set["Age"].median()
-    age_lookup = train_set.groupby(["Parch", "SibSp","Sex","Embarked"])["Age"].median()
+    adult_age = train_set[train_set["Age"] >= ADULT_AGE]["Age"].median().round()
+    child_age = train_set[train_set["Age"] < ADULT_AGE]["Age"].median().round()
+    print("Median Adult Age: ", adult_age)
+    print("Median Child Age: ", child_age)
+
+    age_lookup = train_set.groupby(["Parch", "SibSp","Sex","Embarked","PersonType"])["Age"].median()
 
     missing_age = train_set[train_set["Age"].isna() == True]
     for idx in missing_age.index:
@@ -200,32 +202,20 @@ def transformDataset(train_set):
         sibsp_val = record["SibSp"]
         sex_val = record["Sex"]
         embarked_val = record["Embarked"]
-        #print(idx, ":", parch_val, sibsp_val, sex_val, embarked_val)
+        persontype_val = record["PersonType"]
 
-        if (parch_val, sibsp_val, sex_val, embarked_val) in age_lookup.index:
+
+        if (parch_val, sibsp_val, sex_val, embarked_val,persontype_val) in age_lookup.index:
             #print("Exists")
-            train_set.loc[idx, "Age"] = age_lookup[parch_val, sibsp_val, sex_val, embarked_val] + .1
+            train_set.loc[idx, "Age"] = age_lookup[parch_val, sibsp_val, sex_val, embarked_val, persontype_val]
         else:
             #print("Does not exist")
-            train_set.loc[idx, "Age"] = median_age + .1
-
-
-
-
-
-    # median_childage = train_set[train_set["PersonType"] == "Child"]["Age"].median()
-    # median_adultage = train_set[train_set["PersonType"] == "Adult"]["Age"].median()
-
-    # train_set.loc[ (train_set["PersonType"] == "Adult") & (train_set["Age"].isnull()), "Age"] = median_adultage + 0.1
-    # train_set.loc[ (train_set["PersonType"] == "Child") & (train_set["Age"].isnull()), "Age"] = median_childage + 0.1
-
-    #median_childage = train_set[train_set["MaritalStatus"] == "Married"]["Age"].median()
-    #median_adultage = train_set[train_set["MaritalStatus"] == "Not Married"]["Age"].median()
-    # train_set.loc[(train_set["MaritalStatus"] == "Married") & (train_set["Age"].isnull()), "Age"] = median_adultage + 0.1
-    # train_set.loc[(train_set["MaritalStatus"] == "Not Married") & (train_set["Age"].isnull()), "Age"] = median_childage + 0.1
-
-    # train_set.loc[(train_set["PersonType"] == "Adult") & (train_set["Age"].isnull()), "Age"] = median_adultage + 0.1
-    # train_set.loc[(train_set["PersonType"] == "Not Child") & (train_set["Age"].isnull()), "Age"] = median_childage + 0.1
+            if (persontype_val == "Child"):
+                train_set.loc[idx, "Age"] = child_age
+                print("[",idx,"] : Child",child_age)
+            else:
+                train_set.loc[idx, "Age"] = adult_age
+                print("[", idx, "] Adult: ", adult_age)
 
     # Columns to add
     # Age Group
@@ -233,22 +223,27 @@ def transformDataset(train_set):
     train_set["AgeGroup"] = pd.cut(train_set["Age"], bins=range(0,65,5), labels=labels).to_list()
     train_set["AgeGroup"].fillna("Over 60", inplace=True)
 
-    train_set["SexAgeGroup"] = train_set["Sex"] +"-" + train_set["AgeGroup"]
+    train_set["SexAgeGroup"] = train_set["Sex"] + "-" + train_set["AgeGroup"]
 
     # train_set["Embarked"].fillna(value="Unknown", inplace=True)
     # train_set["Age"].fillna(value=-1, inplace=True)
 
     #Pclass
-    train_set.loc[train_set["Pclass"] == 1, "PClassCat"] = "First"
-    train_set.loc[train_set["Pclass"] == 2, "PClassCat"] = "Second"
-    train_set.loc[train_set["Pclass"] == 3, "PClassCat"] = "Third"
+    train_set.loc[train_set["Pclass"] == 1, "PclassCat"] = "First"
+    train_set.loc[train_set["Pclass"] == 2, "PclassCat"] = "Second"
+    train_set.loc[train_set["Pclass"] == 3, "PclassCat"] = "Third"
 
-    #Fare
-    labels = ["{0} - {1}".format(i, i+4) for i in range(0, 50, 5)]
-    train_set["FareGroup"] = pd.cut(train_set["AverageFare"], bins=range(0,55,5), labels=labels).to_list()
-    train_set["FareGroup"].fillna(value="Over $50", inplace=True)
+
+    # #Fare
+    labels = ["{0} - {1}".format(i, i+4) for i in range(0, 30, 5)]
+    train_set["FareGroup"] = pd.cut(train_set["AverageFare"], bins=range(0,35,5), labels=labels).to_list()
+    train_set["FareGroup"].fillna(value="Over 30", inplace=True)
+
+    #SexPclass
+    train_set["SexPclass"] = train_set["Sex"] + train_set["PclassCat"]
 
     return train_set
+
 
 ##################
 ## Data Process
@@ -259,7 +254,8 @@ def transformDataset(train_set):
 
 def dataClean(train_set):
     ##Note: Removed Category Columns
-    train_set.drop(labels=["Name", "FirstName", "LastName", "Ticket", "Cabin", "SexAgeGroup", "Pclass"], axis=1,
+    train_set.drop(labels=["Name", "FirstName", "LastName", "Ticket", "Cabin", "Pclass", "SexPclass","SexAgeGroup",
+                           "FareGroup", "SibSpType","ParchType","Embarked"], axis=1,
            inplace=True)
 
 
@@ -311,14 +307,20 @@ def dataClean(train_set):
     train_num_array = imputer.fit_transform(train_num)
     train_num = pd.DataFrame(data=train_num_array, columns=train_num_col)
 
+
     #Combine
     train_processed = train_cat.merge(train_num, how="inner", left_index=True, right_index=True)
 
-    train_preprocessed = train_processed.copy()
+    # Remove numeric features
+    train_processed.drop(labels=["GroupSize", "SibSp", "Parch", "Age", "AverageFare"], axis=1, inplace=True)
 
-    #Remove numeric features
-    train_processed.drop(labels=["Age", "GroupSize", "SibSp", "Fare","AverageFare","Parch"], axis=1,
-           inplace=True)
+    #Feature Scale for numeric categories
+    from sklearn.preprocessing import StandardScaler
+    scale = StandardScaler()
+    train_processed = pd.DataFrame(data = scale.fit_transform(train_processed), columns=train_processed.columns)
+
+
+    train_preprocessed = train_processed.copy()
 
 
     print("DataClean: Columns: ", train_set.columns)
@@ -329,12 +331,6 @@ def dataClean(train_set):
         print("Survived feature does not exist")
 
     train_labels = train_processed.columns
-
-    # #Feature Scale
-    from sklearn.preprocessing import StandardScaler
-    scale = StandardScaler()
-
-    train_processed = pd.DataFrame(columns=train_labels, data = scale.fit_transform(train_processed))
 
     return  train_processed, train_preprocessed
 
@@ -349,8 +345,6 @@ print("Cleaning train dataset...")
 trainTransform = transformDataset(train_set)
 train_Y = trainTransform["Survived"]
 
-#Todo: Identify most effective identifiers in the dataClean() method
-
 train_processed, train_preprocessed  = dataClean(trainTransform)
 print("Cleaning train dataset complete")
 
@@ -360,24 +354,32 @@ from sklearn.model_selection import train_test_split
 train_split, test_split, trainY_split, testY_split = train_test_split(train_processed, train_Y, random_state=42, test_size=.3)
 
 #Predictor
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, RidgeClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, BaggingClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
 
 print("Logistic Regression")
-logreg = LogisticRegression(solver="lbfgs")
+logreg = LogisticRegression(solver='lbfgs')
 # logreg.fit(X=train_split, y=trainY_split)
 # pred = logreg.predict(test_split)
 # print("Accuracy: ", accuracy_score(testY_split, pred))
 crossval = cross_val_score(logreg, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
-print("SVM")
+print("Ridge Regression")
+ridgereg = RidgeClassifier(alpha=0.5)
+# logreg.fit(X=train_split, y=trainY_split)
+# pred = logreg.predict(test_split)
+# print("Accuracy: ", accuracy_score(testY_split, pred))
+crossval = cross_val_score(ridgereg, train_processed, train_Y, scoring="f1", cv=10)
+getScore(crossval)
+
+print("SVC")
 svc = SVC(gamma="auto")
 # svc.fit(X=train_split, y=trainY_split)
 # pred = svc.predict(train_processed)
@@ -385,13 +387,30 @@ svc = SVC(gamma="auto")
 crossval = cross_val_score(svc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
+print("LinearSVC")
+svc = LinearSVC(max_iter=10000)
+# svc.fit(X=train_split, y=trainY_split)
+# pred = svc.predict(train_processed)
+# print("Accuracy: ", accuracy_score(train_Y, pred))
+crossval = cross_val_score(svc, train_processed, train_Y, scoring="f1", cv=10)
+getScore(crossval)
+
+
 print("Random Forest Tree")
-rtc = RandomForestClassifier(n_estimators=20)
+rtc = RandomForestClassifier(n_estimators=500)
 # dtc.fit(X=train_split, y=trainY_split)
 # pred = dtc.predict(train_processed)
 # print("Accuracy: ", accuracy_score(train_Y, pred))
 crossval = cross_val_score(rtc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
+
+# print("BaggingClassifier")
+# bc = BaggingClassifier(n_estimators=1000, base_estimator=SVC(gamma="auto"))
+# # dtc.fit(X=train_split, y=trainY_split)
+# # pred = dtc.predict(train_processed)
+# # print("Accuracy: ", accuracy_score(train_Y, pred))
+# crossval = cross_val_score(bc, train_processed, train_Y, scoring="f1", cv=10)
+# getScore(crossval)
 
 
 print("Decision Tree")
@@ -402,22 +421,22 @@ dtc = DecisionTreeClassifier()
 crossval = cross_val_score(dtc, train_processed, train_Y, scoring="f1", cv=10)
 getScore(crossval)
 
-print("Extra Tree Classifier")
-etc = ExtraTreeClassifier()
-# etc.fit(X=train_split, y=trainY_split)
-# pred = etc.predict(train_processed)
-# print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(etc, train_processed, train_Y, scoring="f1", cv=10)
-getScore(crossval)
+# print("Extra Tree Classifier")
+# etc = ExtraTreeClassifier()
+# # etc.fit(X=train_split, y=trainY_split)
+# # pred = etc.predict(train_processed)
+# # print("Accuracy: ", accuracy_score(train_Y, pred))
+# crossval = cross_val_score(etc, train_processed, train_Y, scoring="f1", cv=10)
+# getScore(crossval)
 
 
-print("Grandient Boost")
-gbc = GradientBoostingClassifier()
-# gbc.fit(X=train_split, y=trainY_split)
-# pred = gbc.predict(train_processed)
-# print("Accuracy: ", accuracy_score(train_Y, pred))
-crossval = cross_val_score(gbc, train_processed, train_Y, scoring="f1", cv=10)
-getScore(crossval)
+# print("Grandient Boost")
+# gbc = GradientBoostingClassifier()
+# # gbc.fit(X=train_split, y=trainY_split)
+# # pred = gbc.predict(train_processed)
+# # print("Accuracy: ", accuracy_score(train_Y, pred))
+# crossval = cross_val_score(gbc, train_processed, train_Y, scoring="f1", cv=10)
+# getScore(crossval)
 
 
 #pick strongest model and hyperparameter tune
@@ -429,7 +448,7 @@ logres_param_grid = [{
                         "solver":["liblinear"],
                         "penalty": ["l1", "l2"],
                         "C":[0.001, 0.01, 0.1, 0.5],
-                        "max_iter":[100,200,300]
+                        "max_iter":[500,1000]
                     },
                     {
                         "solver": ["lbfgs"],
@@ -441,8 +460,9 @@ logres_grid = GridSearchCV(LogisticRegression(random_state=42),
                            param_grid=logres_param_grid,
                            scoring="average_precision",
                            verbose=0,
-                           cv=5,
-                           return_train_score=True)
+                           cv=10,
+                           return_train_score=True,
+                           n_jobs=-1)
 logres_grid.fit(X=train_split, y=trainY_split)
 
 # for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
@@ -461,15 +481,91 @@ print("Precision:", precision_score(testY_split, logres_predict))
 print("Recall:", recall_score(testY_split, logres_predict))
 print("Confusion Matrix\n", confusion_matrix(testY_split, logres_predict))
 
-svm_param_grid = [{ "C":[0.6, 0.7, 0.8,0.9],
-                    "kernel":["linear", "poly", "rbf", "sigmoid"],
-                    "degree":[1, 2, 3, 4, 5],
-                    "gamma":["auto", "scale"]
+
+
+# ridgereg_param_grid = [{
+#                         "alpha": [0.5,0.7,0.9,0.95,1],
+#                         "max_iter": [None, 0.5, 10, 50, 100,150],
+#                         "tol": [0.000001, 0.00001,0.0001,0.001,0.1],
+#                         "class_weight": [None, "balanced"]
+#                     }]
+# ridgereg_grid = GridSearchCV(RidgeClassifier(random_state=42),
+#                            param_grid=ridgereg_param_grid,
+#                            scoring="average_precision",
+#                            verbose=1,
+#                            cv=10,
+#                            return_train_score=True,
+#                            n_jobs=-1)
+# ridgereg_grid.fit(X=train_split, y=trainY_split)
+#
+# # for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
+# #     print(f1, params)
+# ridgereg_final = ridgereg_grid.best_estimator_
+# print(ridgereg_final)
+# #train with full train set
+#
+# ridgereg_predict = ridgereg_final.predict(test_split)
+#
+# print("Ridge Regression")
+# print("====================")
+# print("Accuracy:" , accuracy_score(testY_split, ridgereg_predict))
+# print("F1: ", f1_score(testY_split, ridgereg_predict))
+# print("Precision:", precision_score(testY_split, ridgereg_predict))
+# print("Recall:", recall_score(testY_split, ridgereg_predict))
+# print("Confusion Matrix\n", confusion_matrix(testY_split, ridgereg_predict))
+
+
+
+rfc_param_grid = [{
+                        "n_estimators":[100, 200, 300],
+                        "max_depth": [None, 8, 9, 10],
+                        "min_samples_split": [4,6],
+                        "min_samples_leaf": [4,6],
+                         "max_features" : ["auto", "sqrt", "log2"]
                     }]
-svm_grid = GridSearchCV(SVC(random_state=42),
+rfc_grid = GridSearchCV(RandomForestClassifier(random_state=42),
+                        param_grid=rfc_param_grid,
+                        scoring="average_precision",
+                        verbose=0,
+                        cv=10,
+                        return_train_score=True,
+                        n_jobs=-1)
+
+rfc_grid.fit(X=train_split, y=trainY_split)
+
+#import pickle
+#pickle.dump(rfc_grid,file=open("rfc.grid.obj", "wb"))
+
+
+# for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
+#     print(f1, params)
+rfc_final = rfc_grid.best_estimator_
+
+#train with full train set
+
+rfc_predict = rfc_final.predict(test_split)
+
+print("Random Forest")
+print("====================")
+print("Accuracy:" , accuracy_score(testY_split, rfc_predict))
+print("F1: ", f1_score(testY_split, rfc_predict))
+print("Precision:", precision_score(testY_split, rfc_predict))
+print("Recall:", recall_score(testY_split, rfc_predict))
+print("Confusion Matrix\n", confusion_matrix(testY_split, rfc_predict))
+
+
+
+svm_param_grid = [{ "C":[0.6, 0.7, 0.8, 1],
+                    "kernel":["linear", "rbf", "sigmoid","poly"],
+                    "degree":[1,2,3,4],
+                    "gamma":["auto", "scale"],
+                    "coef0": [0.0, 0.2, 0.4,0.8]
+                    }]
+svm_grid = GridSearchCV(SVC(random_state=42,max_iter=-1),
                         param_grid=svm_param_grid,
-                        scoring="f1",
-                        verbose=1,
+                        scoring="average_precision",
+                        verbose=0,
+                        cv=10,
                         n_jobs=-1)
 svm_grid.fit(X=train_split, y=trainY_split)
 
@@ -487,50 +583,174 @@ print("Recall:", recall_score(testY_split, svm_predict))
 print("Confusion Matrix\n", confusion_matrix(testY_split, svm_predict))
 
 
-gb_param_grid = [{ "learning_rate":[0.001,0.01,0.1,1],
-                    "max_depth":[1,3,5],
-                    "max_features":["auto", "sqrt", "log2"],
-                    }]
-gb_grid = GridSearchCV(GradientBoostingClassifier(random_state=42),
-                        param_grid=gb_param_grid,
-                        scoring="f1",
-                        verbose=1,
-                        n_jobs=-1)
-gb_grid.fit(X=train_split, y=trainY_split)
 
-# for f1, params in zip(svm_grid.cv_results_["mean_test_score"], svm_grid.cv_results_["params"]):
-#     print(f1, params)
-gb_final = gb_grid.best_estimator_
-gb_predict = gb_final.predict(test_split)
+# linsvm_param_grid = [{ "penalty": ["l2"] ,
+#                     "loss": ["hinge", "squared_hinge"],
+#                     "C": [0.00001, 0.0001 , 0.001, 0.1, 0.2 ],
+#                     "max_iter": [1, 10]
+#                     }]
+# linsvm_grid = GridSearchCV(LinearSVC(random_state=42),
+#                         param_grid=linsvm_param_grid,
+#                         scoring="average_precision",
+#                         verbose=1,
+#                         cv=10,
+#                         n_jobs=-1)
+# linsvm_grid.fit(X=train_split, y=trainY_split)
+#
+# # for f1, params in zip(svm_grid.cv_results_["mean_test_score"], svm_grid.cv_results_["params"]):
+# #     print(f1, params)
+# linsvm_final = linsvm_grid.best_estimator_
+# linsvm_predict = linsvm_final.predict(test_split)
+#
+# print("LinearSVC")
+# print("====")
+# print("Accuracy:" , accuracy_score(testY_split, linsvm_predict))
+# print("F1: ", f1_score(testY_split, linsvm_predict))
+# print("Precision:", precision_score(testY_split, linsvm_predict))
+# print("Recall:", recall_score(testY_split, linsvm_predict))
+# print("Confusion Matrix\n", confusion_matrix(testY_split, linsvm_predict))
+#
 
-print("Gradient Boost")
-print("==============")
-print("Accuracy:" , accuracy_score(testY_split, gb_predict))
-print("F1: ", f1_score(testY_split, gb_predict))
-print("Precision:", precision_score(testY_split, gb_predict))
-print("Recall:", recall_score(testY_split, gb_predict))
-print("Confusion Matrix\n", confusion_matrix(testY_split, gb_predict))
 
+# #Linear SVC with Polynomial Features
+# from sklearn.preprocessing import PolynomialFeatures
+#
+# pf = PolynomialFeatures(degree=3)
+# train_pf_split = pf.fit_transform(train_split)
+#
+#
+# linsvm_param_grid = [{ "penalty": ["l2"] ,
+#                     "loss": ["hinge", "squared_hinge"],
+#                     "C": [0.1, 0.2, 0.3],
+#                     "max_iter": [1000,2000]
+#                     }]
+# linsvm_grid = GridSearchCV(LinearSVC(random_state=42),
+#                         param_grid=linsvm_param_grid,
+#                         scoring="average_precision",
+#                         verbose=1,
+#                         cv=10,
+#                         n_jobs=-1)
+# linsvm_grid.fit(X=train_pf_split, y=trainY_split)
+#
+# # for f1, params in zip(svm_grid.cv_results_["mean_test_score"], svm_grid.cv_results_["params"]):
+# #     print(f1, params)
+# linsvm_final = linsvm_grid.best_estimator_
+#
+# test_pf_split = pf.fit_transform(test_split)
+# linsvm_predict = linsvm_final.predict(test_pf_split)
+#
+# print("LinearSVC + PolynomialFeatures")
+# print("====")
+# print("Accuracy:" , accuracy_score(testY_split, linsvm_predict))
+# print("F1: ", f1_score(testY_split, linsvm_predict))
+# print("Precision:", precision_score(testY_split, linsvm_predict))
+# print("Recall:", recall_score(testY_split, linsvm_predict))
+# print("Confusion Matrix\n", confusion_matrix(testY_split, linsvm_predict))
+#
+#
+# gb_param_grid = [{ "learning_rate":[0.001,0.01,0.1,1],
+#                     "max_depth":[1,3,5],
+#                     "max_features":["auto", "sqrt", "log2"],
+#                     "n_estimators": [100,200,400,800]
+#                     }]
+# gb_grid = GridSearchCV(GradientBoostingClassifier(random_state=42),
+#                         param_grid=gb_param_grid,
+#                         scoring="average_precision",
+#                         verbose=0,
+#                         n_jobs=-1)
+# gb_grid.fit(X=train_split, y=trainY_split)
+#
+# # for f1, params in zip(svm_grid.cv_results_["mean_test_score"], svm_grid.cv_results_["params"]):
+# #     print(f1, params)
+# gb_final = gb_grid.best_estimator_
+# gb_predict = gb_final.predict(test_split)
+#
+# print("Gradient Boost")
+# print("==============")
+# print("Accuracy:" , accuracy_score(testY_split, gb_predict))
+# print("F1: ", f1_score(testY_split, gb_predict))
+# print("Precision:", precision_score(testY_split, gb_predict))
+# print("Recall:", recall_score(testY_split, gb_predict))
+# print("Confusion Matrix\n", confusion_matrix(testY_split, gb_predict))
 
+#
+# bc_param_grid = [{  "n_estimators": [75, 100, 125],
+#                     "base_estimator": [linsvm_final, logres_final, ridgereg_final, gb_final, rfc_final, svm_final]
+#                     }]
+# bc_grid = GridSearchCV(BaggingClassifier(random_state=42),
+#                         param_grid=bc_param_grid,
+#                         scoring="average_precision",
+#                         verbose=2,
+#                         n_jobs=-1)
+# bc_grid.fit(X=train_split, y=trainY_split)
+#
+# # for f1, params in zip(svm_grid.cv_results_["mean_test_score"], svm_grid.cv_results_["params"]):
+# #     print(f1, params)
+# bc_final = gb_grid.best_estimator_
+# bc_predict = gb_final.predict(test_split)
+#
+# print("Bagging Classifier")
+# print("==============")
+# print("Accuracy:" , accuracy_score(testY_split, bc_predict))
+# print("F1: ", f1_score(testY_split, bc_predict))
+# print("Precision:", precision_score(testY_split, bc_predict))
+# print("Recall:", recall_score(testY_split, bc_predict))
+# print("Confusion Matrix\n", confusion_matrix(testY_split, bc_predict))
+#
+#
 
 
 #prediction
 
 #transform test set
 
-#Retrain model with the full training data set
-logres_final.fit(train_processed, train_Y)
+# logres_final.fit(train_processed, train_Y)
+# svm_final.fit(train_processed, train_Y)
+# linsvm_final.fit(train_processed, train_Y)
+# gb_final.fit(train_processed, train_Y)
+# rfc_final.fit(train_processed, train_Y)
+
+print('Logistic Regression Cross validation score: {:.3f}'.format(cross_val_score(logres_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+print('SVM Cross validation score: {:.3f}'.format(cross_val_score(svm_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+# print('LinSVM Cross validation score: {:.3f}'.format(cross_val_score(linsvm_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+# print('Gradient Boost Cross validation score: {:.3f}'.format(cross_val_score(gb_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+print('Random Forest Cross validation score: {:.3f}'.format(cross_val_score(rfc_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+# print('Bagging Cross validation score: {:.3f}'.format(cross_val_score(bc_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+# print('Ridge Regression Cross validation score: {:.3f}'.format(cross_val_score(ridgereg_final, train_split, trainY_split, cv=20, scoring="f1").mean()))
+
+
 
 testTransform = transformDataset(test_raw)
 test_processed, test_preprocessed = dataClean(testTransform)
 
+#todo: Check if column names are same between train and test
+if len(list(test_processed)) == len(list(train_processed)):
+    print("Feature number matches, continuing to match features")
+else:
+    print("Feature number does not match")
+for x in list(train_processed):
+    if x in list(test_processed):
+        print(x, ": Match in train and test")
+    else:
+        print(x, ": No Match in test (Train only)")
+
+print("Feature check complete.")
+
+#Using just the training set. Did not train against the training-test set
 test_predict = logres_final.predict(test_processed)
 predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
 writeKagglePrediction(PROJECT_NAME, "logres", predict_df)
 
-# test_predict = svm_final.predict(test_processed)
-# predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
-# writeKagglePrediction(PROJECT_NAME, "svm", predict_df)
+test_predict = rfc_final.predict(test_processed)
+predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
+writeKagglePrediction(PROJECT_NAME, "svc", predict_df)
+
+
+rfc_final.fit(train_processed, train_Y)
+
+test_predict = rfc_final.predict(test_processed)
+predict_df = pd.DataFrame(data={"PassengerId": test_raw.index, "Survived": test_predict})
+writeKagglePrediction(PROJECT_NAME, "rfc", predict_df)
 
 
 #tickets associaated with cabin
