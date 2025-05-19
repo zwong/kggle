@@ -9,7 +9,7 @@ from shared import getDataSet, loadDataSet, findBlankColumns, writeKagglePredict
 #pd.set_option('display.max_columns',10)
 
 #MAC or PC
-OS = "MAC"
+OS = "PC"
 
 #Kaggle Constants
 KAGGLE_COMPETITION = "titanic"
@@ -39,7 +39,7 @@ def transformDataset(train_set):
     cabin["CabinClass"] = split[0]
     cabin["CabinNumber"] = split[1]
 
-    cabin["CabinNumber"].fillna(value=-1, inplace=True)
+    cabin["CabinNumber"] = cabin["CabinNumber"].fillna(value=-1)
     cabin.loc[ (cabin["CabinNumber"] == ""), "CabinNumber"] = -1
     cabin["CabinNumber"] = cabin["CabinNumber"].astype(int)
 
@@ -54,7 +54,7 @@ def transformDataset(train_set):
         # print("Setting index", y.index, "with value ", train_set.loc[x]["Cabin"] )
 
 
-    #Embarked
+    #Embarked - Commenting out.
     from sklearn.impute import SimpleImputer
     impute = SimpleImputer(strategy="most_frequent")
     train_set["Embarked"] = impute.fit_transform(train_set["Embarked"].values.reshape(-1,1))
@@ -221,7 +221,7 @@ def transformDataset(train_set):
     # Age Group
     labels = ["{0} - {1}".format(i, i+4) for i in range(0,60,5)]
     train_set["AgeGroup"] = pd.cut(train_set["Age"], bins=range(0,65,5), labels=labels).to_list()
-    train_set["AgeGroup"].fillna("Over 60", inplace=True)
+    train_set["AgeGroup"] = train_set["AgeGroup"].fillna("Over 60")
 
     train_set["SexAgeGroup"] = train_set["Sex"] + "-" + train_set["AgeGroup"]
 
@@ -537,8 +537,8 @@ rfc_grid.fit(X=train_split, y=trainY_split)
 #pickle.dump(rfc_grid,file=open("rfc.grid.obj", "wb"))
 
 
-# for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
-#     print(f1, params)
+for f1, params in zip(logres_grid.cv_results_["mean_test_score"], logres_grid.cv_results_["params"]):
+    print(f1, params)
 rfc_final = rfc_grid.best_estimator_
 
 #train with full train set
@@ -555,16 +555,16 @@ print("Confusion Matrix\n", confusion_matrix(testY_split, rfc_predict))
 
 
 
-svm_param_grid = [{ "C":[0.6, 0.7, 0.8, 1],
-                    "kernel":["linear", "rbf", "sigmoid","poly"],
-                    "degree":[1,2,3,4],
-                    "gamma":["auto", "scale"],
-                    "coef0": [0.0, 0.2, 0.4,0.8]
+svm_param_grid = [{ "C":[0.6, 0.8, 1],
+                    "kernel":["linear", "sigmoid","poly"],
+                    "degree":[2,4],
+                    "gamma":["auto"],
+                    "coef0": [0.0, 0.4,0.8]
                     }]
-svm_grid = GridSearchCV(SVC(random_state=42,max_iter=-1),
+svm_grid = GridSearchCV(SVC(random_state=42,max_iter=10),
                         param_grid=svm_param_grid,
                         scoring="average_precision",
-                        verbose=0,
+                        verbose=1,
                         cv=10,
                         n_jobs=-1)
 svm_grid.fit(X=train_split, y=trainY_split)
