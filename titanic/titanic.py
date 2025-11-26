@@ -8,14 +8,12 @@ from sklearn.impute import SimpleImputer
 from shared import getDataSet, loadDataSet, findBlankColumns, writeKagglePrediction
 #pd.set_option('display.max_columns',10)
 
-#MAC or PC
-OS = "PC"
 
 #Kaggle Constants
 KAGGLE_COMPETITION = "titanic"
 PROJECT_NAME = "titanic"
 
-#getDataSet(KAGGLE_COMPETITION, PROJECT_NAME)
+getDataSet(KAGGLE_COMPETITION, PROJECT_NAME)
 
 train_raw, test_raw = loadDataSet(PROJECT_NAME, indexName="PassengerId")
 
@@ -56,8 +54,8 @@ def transformDataset(train_set):
 
     #Embarked - Commenting out.
     from sklearn.impute import SimpleImputer
-    impute = SimpleImputer(strategy="most_frequent")
-    train_set["Embarked"] = impute.fit_transform(train_set["Embarked"].values.reshape(-1,1))
+    #impute = SimpleImputer(strategy="most_frequent")
+    #train_set["Embarked"] = impute.fit_transform(train_set["Embarked"].values.reshape(-1,1))
 
     #Name Salutation
     name = train_set["Name"].str.extract(pat="(.+),\s(.+?)\.(.*)")
@@ -188,8 +186,8 @@ def transformDataset(train_set):
 
 
     #Age
-    adult_age = train_set[train_set["Age"] >= ADULT_AGE]["Age"].median().round()
-    child_age = train_set[train_set["Age"] < ADULT_AGE]["Age"].median().round()
+    adult_age = train_set[train_set["Age"] >= ADULT_AGE]["Age"].median()
+    child_age = train_set[train_set["Age"] < ADULT_AGE]["Age"].median()
     print("Median Adult Age: ", adult_age)
     print("Median Child Age: ", child_age)
 

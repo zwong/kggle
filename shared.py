@@ -3,10 +3,13 @@ import zipfile as zip
 import time
 import pandas as pd
 
+#LINUX or PC
+OS = "LINUX"
 
 def setConfig(PROJECT_NAME):
-    BASE_PATH = os.popen("cd").read()[:-1]
-    # For Mac: BASE_PATH = os.popen("pwd").read()[:-1]
+    #BASE_PATH = os.popen("cd").read()[:-1]
+    # For Mac:
+    BASE_PATH = os.popen("pwd").read()[:-1]
     PROJECT_PATH = os.path.join(BASE_PATH, PROJECT_NAME)
     DATASET_PATH = os.path.join(PROJECT_PATH, "dataset")
     DOWNLOAD_PATH = os.path.join(DATASET_PATH, "zip")
@@ -23,6 +26,15 @@ def getDataSet(KAGGLE_COMPETITION, PROJECT_NAME):
         os.mkdir(DOWNLOAD_PATH)
     except OSError:
         print("Directory already exists")
+        print("Deleting dataset files..." + DATASET_PATH)
+        if (OS == "PC"):
+            os.system("del /Q " + DATASET_PATH)
+        if (OS == "LINUX"):
+            os.system("rm -rf " + DATASET_PATH)
+        else:
+            print("no OS selected")
+            exit(-1)
+
 
     print("Download dataset...")
     os.system(KAGGLE_COMMAND)
@@ -33,19 +45,21 @@ def getDataSet(KAGGLE_COMPETITION, PROJECT_NAME):
     #unzip.extractall(path=DATASET_PATH)
     #unzip.close()
     print("Delete zip file...")
-    # os.system("del /Q " + DOWNLOAD_PATH + "\\*")
-
-    #For Mac
-    os.system("rm " + DOWNLOAD_PATH + "/*")
-
+    if (OS == "PC"):
+        os.system("del /Q " + PROJECT_PATH + "\\zip")
+    if (OS == "LINUX"):
+        os.system("rm -rf " + PROJECT_PATH + "/zip")
+    else:
+        print("no OS selected")
+        exit(-1)
 
 #Load Dataset
 #Returns test and train Dataframes
 def loadDataSet(PROJECT_NAME, indexName="Id"):
     BASE_PATH, PROJECT_PATH, DATASET_PATH, DOWNLOAD_PATH = setConfig(PROJECT_NAME)
 
-    if (not os.path.exists(DATASET_PATH)):
-        getDataSet(KAGGLE_COMPETITION,   PROJECT_NAME)
+   #if (not os.path.exists(DATASET_PATH)):
+   #     getDataSet(KAGGLE_COMPETITION,   PROJECT_NAME)
 
     train = pd.read_csv( os.path.join(DATASET_PATH, "train.csv"), index_col=indexName)
     test =  pd.read_csv( os.path.join(DATASET_PATH, "test.csv"), index_col=indexName)
